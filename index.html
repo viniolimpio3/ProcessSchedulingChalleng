@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desafio - Escalonador de Processos!</title>
+    <!-- Incluindo Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <div class="mt-4 row justify-content-center">
+            <div class="col-sm-12">
+                <h1 class="mb-4">Sistemas Operacionais - Escalonador de Processos!</h1>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="card-title">
+                            <h3>
+                                Processos
+                            </h3>
+                        </div>
+                        <div class="mb-3">
+                            <div class="row">
+                                <div class="col-4">
+                                    <label for="tempos-chegada" class="form-label">Tempos de chegada</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control invalid" id="tempos-chegada" placeholder="0;2;2;4;4">
+                                    </div>
+                                    <div class="form-text">Separado por <b>";"</b> - Exemplo: 0;2;2;4;4
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <label for="tempos-servico" class="form-label">Tempos de serviço</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="tempos-servico" placeholder="5;2;4;1;2">
+                                    </div>
+                                    <div class="form-text">Separado por <b>";"</b> - Exemplo: 5;2;4;1;2 (Não pode ser 0)
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <label for="prioridades" class="form-label">Prioridades</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="prioridades" placeholder="2;3;1;4;5">
+                                    </div>
+                                    <div class="form-text">Separado por <b>";"</b> - Exemplo: 5;2;4;1;2 (De 1 a 5)
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-4">
+                                    <label for="algoritmo" class="form-label">Algoritmo</label>
+                                    <select class="form-select" id="algoritmo">
+                                        <option selected value="fcfs"> FCFS (First-Come, First Served) </option>
+                                        <option value="sjf">SHORTEST JOB FIRST (SJF)</option>
+                                        <option value="rr">ROUND ROBIN (RR)</option>
+                                        <option value="srtf">SHORTEST REMAINING TIME FIRST (SRTF)</option>
+                                        <option value="prioc">PRIORIDADE COOPERATIVO (PRIOc)</option>
+                                        <option value="priop">PRIORIDADE COOPERATIVO (PRIOp)</option>
+                                    </select>
+                                </div>
+                                <div class="col-4" id="quantum-col" hidden>
+                                    <label for="quantum" class="form-label">Quantum</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="quantum" placeholder="">
+                                    </div>
+                                    <div class="form-text">Número inteiro
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="./index.js"></script>
+</body>
+
+</html>
