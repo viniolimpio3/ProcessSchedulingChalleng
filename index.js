@@ -68,14 +68,13 @@ function returnFields() {
 
     return {
         selectAlg: document.getElementById('algoritmo'),
-        quantumCol: document.getElementById('quantum-col'),
         prioridades,
         temposChegada,
         temposServ,
         arrCh,
         arrServ,
         arrPrio,
-        quantum,
+        quantum: parseInt(quantum.value),
         processes
     }
 }
@@ -117,15 +116,15 @@ document.getElementById('btn-calc').onclick = () => {
         alert("Erro: " + val.message)
         return;
     }
-    console.log(':)')
 
     let r = calcular()
-    console.log(r)
+    
+    console.log('response', r)
 
-    // plotaGrafico(r)
+    plotaGrafico(r)
 
-    // document.getElementById('t-medio-exec').innerHTML = `(${r.processes.map(p => p.totalExec.toString()).join(' + ')}) / ${r.processes.length} = ${r.tempoMedExec.toFixed(2)}`
-    // document.getElementById('t-medio-espera').innerHTML = `(${r.processes.map(p => p.tEspera.toString()).join(' + ')}) / ${r.processes.length} = ${r.tempoMedEspera.toFixed(2)}`
+    document.getElementById('t-medio-exec').innerHTML = `(${r.processes.map(p => p.totalExec.toString()).join(' + ')}) / ${r.processes.length} = ${r.tempoMedExec.toFixed(2)}`
+    document.getElementById('t-medio-espera').innerHTML = `(${r.processes.map(p => p.tEspera.toString()).join(' + ')}) / ${r.processes.length} = ${r.tempoMedEspera.toFixed(2)}`
 }
 
 
@@ -142,6 +141,15 @@ function calcular() {
             break;
         case 'srtf':
             response = srtf()
+            break;
+        case 'priop':
+            response = priop()
+            break;
+        case 'prioc':
+            response = prioc()
+            break;
+        case 'rr':
+            response = roundRobin()
             break;
         default:
             break;
@@ -180,13 +188,25 @@ function ordenaPorService(processes) {
     return processes.sort( ( a, b ) => (a.remaining < b.remaining) ? -1 : ((a.remaining > b.remaining) ? 1 : 0))
 }
 
-function organizaTemposEspera(processes, idAtual, lastId, t) {
-    if(idAtual == lastId)
-        return processes
+function ordenaPorPrioridade(processes) {
+    return processes.sort( ( a, b ) => (a.priority < b.priority) ? 1 : ((a.priority > b.priority) ? -1 : 0))
+}
 
-    processes[lastId].arrEspera.push(t - 1)
+function calculaTemposEspera(processes) {
+    return processes.map( e => {
+        if(e.tIni == e.arrive && e.arrEspera.length == 0)
+            return e
 
-    return processes
+        e.tEspera = e.tIni - e.arrive
+        if(e.arrEspera.length > 0) {
+            for(let i = 0; i < e.arrEspera.length; i++){ 
+                console.log(e.arrExec[i + 1], e.arrEspera[i], e.arrExec[i + 1] - e.arrEspera[i])
+                e.tEspera += e.arrExec[i + 1] - e.arrEspera[i]
+            }
+        }
+        
+        return e
+    })
 }
 
 function fcfs() {
@@ -333,6 +353,7 @@ function srtf() {
     q = []
 
     let id = ''
+    let lastId = ''
 
     let firstExec = true
 
@@ -348,32 +369,25 @@ function srtf() {
             break
         }
 
-        // Busca o item com o menor service na fila atual ao realizar a ordenação!
+        // Busca o item com o menor service (remaining) na fila atual ao realizar a ordenação!
         if(q.length > 0)
             q = ordenaPorService(q)
 
-        let lastId = id
         id = q.length > 0 ? (q[0].id ?? '') : '' // 'id' do processo de execução atual
-
-
-        if(q.length > 0 && id != lastId)
-            f.processes[id].arrExec.push(t)
-
-        //se o id atual != do ID anterior:
-        // if(lastId != id){
-        //     let aux = f.processes[lastId].arrEspera
-
-        //     f.processes[lastId].arrEspera[aux.length - 1][1] = t - 1 // o último processo executou até o instante t - 1
-
-        //     aux = f.processes[id].arrEspera
-        //     f.processes[id].arrEspera[aux.length - 1] = [t] // adiciona o start do processo
-        // }
         
-        if(q.length > 0)
-            f.processes = organizaTemposEspera(f.processes, id, lastId, t)
+        if(q.length > 0 && id != lastId){
 
+            if(firstExec || (lastId !== '' && !f.processes[lastId].finished))
+                f.processes[id].arrExec.push(t)
+            
+            if(lastId !== '' && !f.processes[lastId].finished)
+                f.processes[lastId].arrEspera.push(t)
+        }
+        
         if(q.length > 0 && f.processes[id].tIni == -1 && t != 0 && firstExec == false)
             f.processes[id].tIni = t
+        
+        lastId = id
 
         // Quando um Processo finaliza toda sua execução
         if (q.length > 0 && q[0].remaining == 0) {
@@ -386,17 +400,23 @@ function srtf() {
             q.shift() // REMOVE o processo atual da fila
 
             if (q.length > 0) {
+
                 q = ordenaPorService(q)
 
                 id = q[0].id
-                f.processes[id].tIni = t
-                f.processes[id].arrEspera.push(f.processes[id].t)
+                lastId = id
+                
+                f.processes[id].arrExec.push(t)
+
+                if(f.processes[id].tIni == -1)
+                    f.processes[id].tIni = t
+
             }
         }
 
         if (firstExec && q.length > 0) { // se for a primeira exec e já tiverem processos na fila!
             f.processes[id].tIni = t
-            f.processes[id].tEspera = t - f.processes[id].arrive
+            f.processes[id].arrExec.push(t)
             firstExec = false
         }
 
@@ -406,12 +426,296 @@ function srtf() {
         t++;
     }
 
+
+    f.processes = calculaTemposEspera(f.processes)
+
     return {
         processes: f.processes,
         t
     }
 }
 
+function priop() {
+    let f = returnFields()
+    console.log('fields', f)
+    let t = 0
+    let finished = false
+
+    q = []
+
+    let id = ''
+    let lastId = ''
+
+    let firstExec = true
+
+    while (!finished) {
+
+        // Busca os processos que chegaram no instante atual de execução
+        for (let p of searchArrivingProcess(f, t))
+            q.push(p)
+
+        // Se a fila zerou e não há mais processos a serem executados
+        if (q.length == 0 && !(f.processes.find(e => e.finished == false))) {
+            finished = true
+            break
+        }
+
+        // Busca o item com o menor service (remaining) na fila atual ao realizar a ordenação!
+        if(q.length > 0 && q[0].remaining > 0)
+            q = ordenaPorPrioridade(q)
+
+        id = q.length > 0 ? (q[0].id ?? '') : '' // 'id' do processo de execução atual
+        
+        if(q.length > 0 && id != lastId){
+
+            if(firstExec || (lastId !== '' && !f.processes[lastId].finished == false))
+                f.processes[id].arrExec.push(t)
+
+            if(lastId !== '' && f.processes[lastId].finished == false)
+                f.processes[lastId].arrEspera.push(t)
+        }
+        
+        if(q.length > 0 && f.processes[id].tIni == -1 && t != 0 && firstExec == false)
+            f.processes[id].tIni = t
+        
+        lastId = id
+
+        // Quando um Processo finaliza toda sua execução
+        if (q.length > 0 && q[0].remaining == 0) {
+
+            f.processes[id].tFin = t
+            f.processes[id].totalExec = t - f.processes[id].arrive
+
+            f.processes[id].finished = true
+
+            q.shift() // REMOVE o processo atual da fila
+
+            if (q.length > 0) {
+
+                q = ordenaPorPrioridade(q)
+
+                id = q[0].id
+
+                lastId = id
+                
+                f.processes[id].arrExec.push(t)
+
+                if(f.processes[id].tIni == -1)
+                    f.processes[id].tIni = t
+
+            }
+        }
+
+        if (firstExec && q.length > 0) { // se for a primeira exec e já tiverem processos na fila!
+            f.processes[id].tIni = t
+            f.processes[id].arrExec.push(t)
+            firstExec = false
+        }
+
+        if (q.length > 0)
+            q[0].remaining -= 1
+
+        t++;
+    }
+
+
+    f.processes = calculaTemposEspera(f.processes)
+
+    return {
+        processes: f.processes,
+        t
+    }
+}
+
+function prioc() {
+    let f = returnFields()
+    console.log('fields', f)
+    let t = 0
+    let finished = false
+
+    q = []
+
+    let id = ''
+    let lastId = ''
+
+    let firstExec = true
+
+    while (!finished) {
+
+        // Busca os processos que chegaram no instante atual de execução
+        for (let p of searchArrivingProcess(f, t))
+            q.push(p)
+
+        // Se a fila zerou e não há mais processos a serem executados
+        if (q.length == 0 && !(f.processes.find(e => e.finished == false))) {
+            finished = true
+            break
+        }
+
+        if(firstExec)
+            q = ordenaPorPrioridade(q)
+
+        id = q.length > 0 ? (q[0].id ?? '') : '' // 'id' do processo de execução atual
+        
+        if(q.length > 0 && f.processes[id].tIni == -1 && t != 0 && firstExec == false)
+            f.processes[id].tIni = t
+        
+        lastId = id
+
+        // Quando um Processo finaliza toda sua execução
+        if (q.length > 0 && q[0].remaining == 0) {
+
+            f.processes[id].tFin = t
+            f.processes[id].totalExec = t - f.processes[id].arrive
+
+            f.processes[id].finished = true
+
+            q.shift() // REMOVE o processo atual da fila
+
+            if (q.length > 0) {
+
+                q = ordenaPorPrioridade(q)
+
+                id = q[0].id
+
+                lastId = id
+                
+                f.processes[id].arrExec.push(t)
+
+                if(f.processes[id].tIni == -1)
+                    f.processes[id].tIni = t
+
+            }
+        }
+
+        if (firstExec && q.length > 0) { // se for a primeira exec e já tiverem processos na fila!
+            f.processes[id].tIni = t
+            f.processes[id].arrExec.push(t)
+            firstExec = false
+        }
+
+        if (q.length > 0)
+            q[0].remaining -= 1
+
+        t++;
+    }
+
+
+    f.processes = calculaTemposEspera(f.processes)
+
+    return {
+        processes: f.processes,
+        t
+    }
+}
+
+function roundRobin() {
+    let f = returnFields()
+    console.log('rr', f)
+    let t = 0
+    let finished = false
+
+    q = []
+
+    let id = ''
+    let lastId = ''
+
+    let firstExec = true
+
+    let quantumCount = 0
+
+    while (!finished) {
+
+        // Busca os processos que chegaram no instante atual de execução
+        for (let p of searchArrivingProcess(f, t))
+            q.push(p)
+
+        // Se a fila zerou e não há mais processos a serem executados
+        if (q.length == 0 && !(f.processes.find(e => e.finished == false))) {
+            finished = true
+            break
+        }
+
+        // if(firstExec)
+        //     q = ordenaPorPrioridade(q)
+
+        // Se o quantum já acabou e o processo ainda não finalizou, manda ele pro final da fila
+        id = q.length > 0 ? (q[0].id ?? '') : '' // 'id' do processo de execução atual
+
+        if(q.length > 0 && quantumCount == f.quantum && f.processes[id].remaining > 0) {
+            let first = q.shift()
+            q.push(first)
+            quantumCount = 0
+            id = q.length > 0 ? (q[0].id ?? '') : '' // 'id' do processo de execução atual
+        }
+
+        
+        if(q.length > 0 && f.processes[id].tIni == -1 && t != 0 && firstExec == false)
+            f.processes[id].tIni = t
+
+        if(q.length > 0 && id != lastId){
+            if(firstExec || (lastId !== '' && !f.processes[lastId].finished))
+                f.processes[id].arrExec.push(t)
+            
+            if(lastId !== '' && !f.processes[lastId].finished)
+                f.processes[lastId].arrEspera.push(t)
+        }
+        
+        lastId = id
+
+        
+
+
+        // Quando um Processo finaliza toda sua execução
+        if (q.length > 0 && q[0].remaining == 0) {
+
+            f.processes[id].tFin = t
+            f.processes[id].totalExec = t - f.processes[id].arrive
+
+            f.processes[id].finished = true
+
+            q.shift() // REMOVE o processo atual da fila
+
+            quantumCount = 0
+
+            if (q.length > 0) {
+
+                // q = ordenaPorPrioridade(q)
+
+                id = q[0].id
+
+                lastId = id
+                
+                f.processes[id].arrExec.push(t)
+
+                if(f.processes[id].tIni == -1)
+                    f.processes[id].tIni = t
+
+            }
+        }
+
+        if (firstExec && q.length > 0) { // se for a primeira exec e já tiverem processos na fila!
+            f.processes[id].tIni = t
+            f.processes[id].arrExec.push(t)
+            firstExec = false
+        }
+
+        if (q.length > 0){
+            q[0].remaining -= 1
+            quantumCount++
+        }
+
+        t++;
+    }
+
+
+    f.processes = calculaTemposEspera(f.processes)
+
+    return {
+        processes: f.processes,
+        t
+    }
+}
 
 var ctx = document.getElementById('grafico-final').getContext('2d');
 var grafico = null
@@ -423,28 +727,74 @@ function plotaGrafico(data) {
         grafico.destroy()
 
     for (let proc of data.processes) {
-        datasets.push({
-            label: proc.name,
-            data: [{ x: [proc.tIni, proc.tFin], y: proc.name }],
-            backgroundColor: `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`,
-            borderColor: '#000000',
-            borderWidth: 2,
-            borderSkipped: false,
-            barThickness: 40
-        })
 
-        // Adiciona espera:
-        if (proc.tEspera > 0) {
+        if(proc.arrEspera.length > 0) { // preemptivo! possui mais de um valor por linha
+            if (proc.arrive != proc.tIni)
+                datasets.push({ // Add o tempo de espera inicial
+                    label: proc.name,
+                    data: [{ x: [proc.arrive, proc.tIni], y: proc.name }],
+                    backgroundColor: `white`,
+                    borderColor: '#000000',
+                    borderWidth: 2,
+                    borderSkipped: false,
+                    barThickness: 40
+                })
+
+            let corTempoNormal = `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`
+            for(let i = 0; i < proc.arrExec.length; i++){ 
+
+                let valorFin = proc.arrEspera[i] == null ? proc.tFin : proc.arrEspera[i]
+
+                // Add os tempos de execução normal
+                datasets.push({
+                    label: proc.name,
+                    data: [{ x: [proc.arrExec[i], valorFin], y: proc.name }],
+                    backgroundColor: corTempoNormal,
+                    borderColor: '#000000',
+                    borderWidth: 2,
+                    borderSkipped: false,
+                    barThickness: 40
+                })
+            }
+
+            //Adiciona os tempos de espera de acordo com arrEspera
+            for(let i = 0; i < proc.arrEspera.length; i++){ 
+                datasets.push({
+                    label: proc.name,
+                    data: [{ x: [proc.arrEspera[i], proc.arrExec[i + 1]], y: proc.name }],
+                    backgroundColor: `white`,
+                    borderColor: '#000000',
+                    borderWidth: 2,
+                    borderSkipped: false,
+                    barThickness: 40
+                })
+            }
+
+        } else {
             datasets.push({
-                label: proc.name + ' - Espera',
-                data: [{ x: [proc.arrive, proc.arrive + proc.tEspera], y: proc.name }],
-                backgroundColor: `white`,
+                label: proc.name,
+                data: [{ x: [proc.tIni, proc.tFin], y: proc.name }],
+                backgroundColor: `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`,
                 borderColor: '#000000',
                 borderWidth: 2,
                 borderSkipped: false,
                 barThickness: 40
             })
+    
+            // Adiciona espera:
+            if (proc.tEspera > 0) {
+                datasets.push({
+                    label: proc.name + ' - Espera',
+                    data: [{ x: [proc.arrive, proc.arrive + proc.tEspera], y: proc.name }],
+                    backgroundColor: `white`,
+                    borderColor: '#000000',
+                    borderWidth: 2,
+                    borderSkipped: false,
+                    barThickness: 40
+                })
+            }
         }
+
     }
 
     grafico = new Chart(ctx, {
