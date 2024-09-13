@@ -92,7 +92,7 @@ function preValidacoes() {
     }
 
 
-    if (f.prioridades.value != '' && f.prioridades.value != null && f.arrPrio.length != f.arrCh.length) {
+    if (f.prioridades.value != '' && (f.selectAlg.value == 'prioc' || f.selectAlg.value == 'priop') && f.prioridades.value != null && f.arrPrio.length != f.arrCh.length) {
         return {
             success: false,
             message: 'A quantidade de processos deve ser a mesma entre os dois campos (tempos de chegada e prioridades)'
